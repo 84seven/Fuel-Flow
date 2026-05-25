@@ -354,7 +354,7 @@ export default function Home() {
         </section>
 
         <footer className="mt-6 text-center text-xs text-neutral-600">
-          Fuel Flow Meter · v1.0
+          Fuel Flow Meter · v1.1
         </footer>
       </div>
     </main>
