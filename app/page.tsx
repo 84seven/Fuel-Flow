@@ -105,27 +105,26 @@ export default function Home() {
     };
   }, [isActive]);
 
-  const handleSliderChange = (raw: string) => {
-    const value = clampRate(Number.parseFloat(raw));
-    setFlowRate(value);
-    setRateInput(value.toFixed(1));
-  };
-
   const handleRateChange = (raw: string) => {
     setRateInput(raw);
-    if (raw === "" || raw === "-" || raw === ".") {
+    if (raw === "" || raw === "-") {
       setFlowRate(0);
       return;
     }
     const parsed = Number.parseFloat(raw);
-    if (Number.isNaN(parsed)) return;
     setFlowRate(clampRate(parsed));
   };
 
   const handleRateBlur = () => {
     const clamped = clampRate(Number.parseFloat(rateInput));
     setFlowRate(clamped);
-    setRateInput(clamped.toFixed(1));
+    setRateInput(clamped.toString());
+  };
+
+  const handleSliderChange = (raw: string) => {
+    const value = clampRate(Number.parseFloat(raw));
+    setFlowRate(value);
+    setRateInput(value.toString());
   };
 
   const handleTargetChange = (raw: string) => {
@@ -149,6 +148,7 @@ export default function Home() {
     alarmFiredRef.current = false;
   };
 
+  const displayRate = flowRate.toFixed(1);
   const displayTotal = totalDispensed.toFixed(2);
 
   const remainingToTarget =
@@ -273,12 +273,20 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="rounded-xl bg-neutral-950 border border-neutral-800 px-6 py-8">
-            <div className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3 text-center">
-              Current Flow Rate
-            </div>
-            <div className="flex items-baseline justify-center gap-3 font-mono">
+          <div className="space-y-3">
+            <label
+              htmlFor="rate-input"
+              className="flex items-center justify-between text-sm text-neutral-300"
+            >
+              <span>Flow rate</span>
+              <span className="text-xs text-neutral-500">
+                {MIN_RATE} – {MAX_RATE} L/min
+              </span>
+            </label>
+
+            <div className="flex items-stretch gap-3">
               <input
+                id="rate-input"
                 type="number"
                 inputMode="decimal"
                 min={MIN_RATE}
@@ -287,15 +295,12 @@ export default function Home() {
                 value={rateInput}
                 onChange={(e) => handleRateChange(e.target.value)}
                 onBlur={handleRateBlur}
-                className={`w-[5ch] bg-transparent border-0 outline-none text-center text-5xl sm:text-6xl font-bold font-mono tabular-nums rounded-md px-1 focus:bg-neutral-900 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
-                  isActive ? "text-emerald-400" : "text-neutral-200"
-                }`}
+                className="flex-1 min-w-0 rounded-lg bg-neutral-950 border border-neutral-800 px-4 py-3 text-lg font-mono text-neutral-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition"
                 aria-label="Flow rate in litres per minute"
               />
-              <span className="text-lg sm:text-xl text-neutral-400">
-                L/min
-              </span>
+              <span className="self-center text-neutral-500 text-sm">L/min</span>
             </div>
+
             <input
               type="range"
               min={MIN_RATE}
@@ -303,26 +308,49 @@ export default function Home() {
               step="0.1"
               value={flowRate}
               onChange={(e) => handleSliderChange(e.target.value)}
-              className="mt-6 w-full accent-emerald-500"
+              className="w-full accent-emerald-500"
               aria-label="Flow rate slider"
             />
-            <div className="mt-2 flex justify-between text-xs text-neutral-500 tabular-nums">
-              <span>{MIN_RATE}</span>
-              <span>{MAX_RATE} L/min</span>
-            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={isActive ? () => setIsActive(false) : handleStart}
-            className={`w-full rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg transition active:scale-[0.98] hover:opacity-90 ${
-              isActive ? "shadow-red-900/30" : "shadow-emerald-900/30"
-            }`}
-            style={{ backgroundColor: isActive ? "#EF4444" : "#10B981" }}
-            aria-pressed={isActive}
-          >
-            {isActive ? "Stop Flow" : "Start Flow"}
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={handleStart}
+              disabled={isActive}
+              className="rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-900/30 transition active:scale-[0.97] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+              style={{ backgroundColor: "#10B981" }}
+            >
+              Start Flow
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsActive(false)}
+              disabled={!isActive}
+              className="rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg shadow-red-900/30 transition active:scale-[0.97] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+              style={{ backgroundColor: "#EF4444" }}
+            >
+              Stop Flow
+            </button>
+          </div>
+
+          <div className="rounded-xl bg-neutral-950 border border-neutral-800 px-6 py-8 text-center">
+            <div className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">
+              Current Flow Rate
+            </div>
+            <div className="flex items-baseline justify-center gap-3 font-mono">
+              <span
+                className={`text-5xl sm:text-6xl font-bold tabular-nums transition-colors ${
+                  isActive ? "text-emerald-400" : "text-neutral-200"
+                }`}
+              >
+                {displayRate}
+              </span>
+              <span className="text-lg sm:text-xl text-neutral-400">
+                L/min
+              </span>
+            </div>
+          </div>
         </section>
 
         <footer className="mt-6 text-center text-xs text-neutral-600">
