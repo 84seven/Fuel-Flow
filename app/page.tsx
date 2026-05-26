@@ -68,12 +68,14 @@ export default function Home() {
 
   const ensureAudio = (): AudioContext | null => {
     if (typeof window === "undefined") return null;
-    if (!audioCtxRef.current) {
-      const Ctor =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext;
-      if (!Ctor) return null;
+    const Ctor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!Ctor) return null;
+    // Recreate if the context was never created or was closed (iOS can
+    // close it when the page is backgrounded).
+    if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
       audioCtxRef.current = new Ctor();
     }
     if (audioCtxRef.current.state === "suspended") {
@@ -82,9 +84,7 @@ export default function Home() {
     return audioCtxRef.current;
   };
 
-  const playAlarm = () => {
-    const ctx = ensureAudio();
-    if (!ctx) return;
+  const scheduleBeeps = (ctx: AudioContext) => {
     const now = ctx.currentTime;
     for (let i = 0; i < 3; i++) {
       const start = now + i * 0.2;
@@ -99,6 +99,20 @@ export default function Home() {
       gain.connect(ctx.destination);
       osc.start(start);
       osc.stop(start + 0.17);
+    }
+  };
+
+  const playAlarm = () => {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    // If the context is suspended (tab backgrounded, OS power-save, etc.)
+    // wait for the resume to complete before scheduling — otherwise the
+    // oscillators get scheduled against a stale currentTime and the beeps
+    // play silently.
+    if (ctx.state === "suspended") {
+      ctx.resume().then(() => scheduleBeeps(ctx)).catch(() => {});
+    } else {
+      scheduleBeeps(ctx);
     }
   };
 
@@ -168,6 +182,13 @@ export default function Home() {
   };
 
   const handleStart = () => {
+    // iOS Safari can silently break an AudioContext between activations
+    // even with the page focused, so close any existing one and recreate
+    // it inside this user gesture before the run starts.
+    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
+      void audioCtxRef.current.close();
+    }
+    audioCtxRef.current = null;
     ensureAudio();
     alarmFiredRef.current = false;
     setIsActive(true);
@@ -179,7 +200,7 @@ export default function Home() {
   };
 
   const displayRate = flowRate.toFixed(1);
-  const displayTotal = totalDispensed.toFixed(2);
+  const displayTotal = totalDispensed.toFixed(1);
 
   const remainingToTarget =
     targetAmount > 0 ? Math.max(0, targetAmount - totalDispensed) : 0;
