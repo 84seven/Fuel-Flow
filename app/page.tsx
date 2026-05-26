@@ -200,7 +200,7 @@ export default function Home() {
   };
 
   const displayRate = flowRate.toFixed(1);
-  const displayTotal = totalDispensed.toFixed(1);
+  const displayTotal = totalDispensed.toFixed(2);
 
   const remainingToTarget =
     targetAmount > 0 ? Math.max(0, targetAmount - totalDispensed) : 0;
