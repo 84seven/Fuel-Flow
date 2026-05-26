@@ -235,9 +235,9 @@ export default function Home() {
               <div className="text-xs uppercase tracking-widest text-neutral-500">
                 Total Dispensed
               </div>
-              <div className="mt-1 font-mono text-6xl sm:text-7xl font-bold text-neutral-100 tabular-nums">
+              <div className="mt-1 font-mono text-7xl sm:text-8xl font-bold text-neutral-100 tabular-nums">
                 {displayTotal}
-                <span className="ml-2 text-lg sm:text-xl font-normal text-neutral-400">
+                <span className="ml-2 text-xl sm:text-2xl font-normal text-neutral-400">
                   L
                 </span>
               </div>
