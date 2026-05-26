@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 const MIN_RATE = 0;
 const MAX_RATE = 100;
 const WARNING_SECONDS = 5;
+const RATE_STORAGE_KEY = "fuelflow:rate";
 
 function clampRate(value: number): number {
   if (Number.isNaN(value)) return 0;
@@ -26,6 +27,35 @@ export default function Home() {
   const targetAmountRef = useRef<number>(0);
   const alarmFiredRef = useRef<boolean>(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const hydratedRef = useRef<boolean>(false);
+
+  // Restore last-used flow rate from localStorage on mount.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(RATE_STORAGE_KEY);
+      if (saved !== null) {
+        const parsed = Number.parseFloat(saved);
+        if (!Number.isNaN(parsed)) {
+          const clamped = clampRate(parsed);
+          setFlowRate(clamped);
+          setRateInput(clamped.toString());
+        }
+      }
+    } catch {
+      // localStorage unavailable (private mode, disabled, etc.) — ignore.
+    }
+    hydratedRef.current = true;
+  }, []);
+
+  // Persist flow rate after every change (skipping the pre-hydration render).
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    try {
+      window.localStorage.setItem(RATE_STORAGE_KEY, flowRate.toString());
+    } catch {
+      // Ignore quota / disabled storage.
+    }
+  }, [flowRate]);
 
   useEffect(() => {
     flowRateRef.current = flowRate;
