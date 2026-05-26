@@ -235,9 +235,9 @@ export default function Home() {
               <div className="text-xs uppercase tracking-widest text-neutral-500">
                 Total Dispensed
               </div>
-              <div className="mt-1 font-mono text-4xl sm:text-5xl font-bold text-neutral-100 tabular-nums">
+              <div className="mt-1 font-mono text-6xl sm:text-7xl font-bold text-neutral-100 tabular-nums">
                 {displayTotal}
-                <span className="ml-2 text-base font-normal text-neutral-400">
+                <span className="ml-2 text-lg sm:text-xl font-normal text-neutral-400">
                   L
                 </span>
               </div>
@@ -343,26 +343,17 @@ export default function Home() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={handleStart}
-              disabled={isActive}
-              className="rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-900/30 transition active:scale-[0.97] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-              style={{ backgroundColor: "#10B981" }}
-            >
-              Start Flow
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsActive(false)}
-              disabled={!isActive}
-              className="rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg shadow-red-900/30 transition active:scale-[0.97] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-              style={{ backgroundColor: "#EF4444" }}
-            >
-              Stop Flow
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={isActive ? () => setIsActive(false) : handleStart}
+            className={`w-full rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg transition active:scale-[0.98] hover:opacity-90 ${
+              isActive ? "shadow-red-900/30" : "shadow-emerald-900/30"
+            }`}
+            style={{ backgroundColor: isActive ? "#EF4444" : "#10B981" }}
+            aria-pressed={isActive}
+          >
+            {isActive ? "Stop Flow" : "Start Flow"}
+          </button>
 
           <div className="rounded-xl bg-neutral-950 border border-neutral-800 px-6 py-8 text-center">
             <div className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">
