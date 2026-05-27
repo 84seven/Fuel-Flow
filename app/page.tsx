@@ -6,11 +6,25 @@ const MIN_RATE = 0;
 const MAX_RATE = 100;
 const WARNING_SECONDS = 5;
 const RATE_STORAGE_KEY = "fuelflow:rate";
+const PRESET_RATES_STORAGE_KEY = "fuelflow:preset-rates";
+const ACTIVE_PRESET_STORAGE_KEY = "fuelflow:active-preset";
 
 const FUEL_PRESETS = [
-  { label: "AVGAS", rate: 45 },
-  { label: "Jet A1", rate: 36 },
+  { label: "AVGAS", defaultRate: 45 },
+  { label: "Jet A1", defaultRate: 36 },
 ] as const;
+
+type PresetLabel = (typeof FUEL_PRESETS)[number]["label"];
+
+const PRESET_LABEL_SET = new Set<string>(FUEL_PRESETS.map((p) => p.label));
+
+const isPresetLabel = (value: unknown): value is PresetLabel =>
+  typeof value === "string" && PRESET_LABEL_SET.has(value);
+
+const defaultPresetRates = (): Record<PresetLabel, number> =>
+  Object.fromEntries(
+    FUEL_PRESETS.map((p) => [p.label, p.defaultRate]),
+  ) as Record<PresetLabel, number>;
 
 function clampRate(value: number): number {
   if (Number.isNaN(value)) return 0;
@@ -25,6 +39,9 @@ export default function Home() {
   const [totalDispensed, setTotalDispensed] = useState<number>(0);
   const [targetInput, setTargetInput] = useState<string>("");
   const [targetAmount, setTargetAmount] = useState<number>(0);
+  const [presetRates, setPresetRates] =
+    useState<Record<PresetLabel, number>>(defaultPresetRates);
+  const [activePreset, setActivePreset] = useState<PresetLabel | null>(null);
 
   const lastTickRef = useRef<number | null>(null);
   const flowRateRef = useRef<number>(flowRate);
@@ -36,15 +53,39 @@ export default function Home() {
   // Restore last-used flow rate from localStorage on mount.
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(RATE_STORAGE_KEY);
-      if (saved !== null) {
-        const parsed = Number.parseFloat(saved);
+      const savedRate = window.localStorage.getItem(RATE_STORAGE_KEY);
+      if (savedRate !== null) {
+        const parsed = Number.parseFloat(savedRate);
         if (!Number.isNaN(parsed)) {
           setFlowRate(clampRate(parsed));
         }
       }
+
+      const savedPresetRates = window.localStorage.getItem(
+        PRESET_RATES_STORAGE_KEY,
+      );
+      if (savedPresetRates !== null) {
+        const parsed: unknown = JSON.parse(savedPresetRates);
+        if (parsed && typeof parsed === "object") {
+          const restored = defaultPresetRates();
+          for (const label of FUEL_PRESETS.map((p) => p.label)) {
+            const raw = (parsed as Record<string, unknown>)[label];
+            if (typeof raw === "number" && !Number.isNaN(raw)) {
+              restored[label] = clampRate(raw);
+            }
+          }
+          setPresetRates(restored);
+        }
+      }
+
+      const savedActivePreset = window.localStorage.getItem(
+        ACTIVE_PRESET_STORAGE_KEY,
+      );
+      if (isPresetLabel(savedActivePreset)) {
+        setActivePreset(savedActivePreset);
+      }
     } catch {
-      // localStorage unavailable (private mode, disabled, etc.) — ignore.
+      // localStorage unavailable / corrupt JSON — ignore and keep defaults.
     }
     hydratedRef.current = true;
   }, []);
@@ -58,6 +99,31 @@ export default function Home() {
       // Ignore quota / disabled storage.
     }
   }, [flowRate]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    try {
+      window.localStorage.setItem(
+        PRESET_RATES_STORAGE_KEY,
+        JSON.stringify(presetRates),
+      );
+    } catch {
+      // Ignore.
+    }
+  }, [presetRates]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    try {
+      if (activePreset === null) {
+        window.localStorage.removeItem(ACTIVE_PRESET_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(ACTIVE_PRESET_STORAGE_KEY, activePreset);
+      }
+    } catch {
+      // Ignore.
+    }
+  }, [activePreset]);
 
   useEffect(() => {
     flowRateRef.current = flowRate;
@@ -152,7 +218,16 @@ export default function Home() {
   }, [isActive]);
 
   const handleSliderChange = (raw: string) => {
-    setFlowRate(clampRate(Number.parseFloat(raw)));
+    const value = clampRate(Number.parseFloat(raw));
+    setFlowRate(value);
+    if (activePreset !== null) {
+      setPresetRates((prev) => ({ ...prev, [activePreset]: value }));
+    }
+  };
+
+  const handlePresetSelect = (label: PresetLabel) => {
+    setActivePreset(label);
+    setFlowRate(presetRates[label]);
   };
 
   const handleTargetChange = (raw: string) => {
@@ -342,12 +417,13 @@ export default function Home() {
 
           <div className="grid grid-cols-2 gap-3">
             {FUEL_PRESETS.map((preset) => {
-              const active = flowRate === preset.rate;
+              const active = activePreset === preset.label;
+              const displayedRate = presetRates[preset.label];
               return (
                 <button
                   key={preset.label}
                   type="button"
-                  onClick={() => setFlowRate(clampRate(preset.rate))}
+                  onClick={() => handlePresetSelect(preset.label)}
                   aria-pressed={active}
                   className={`rounded-xl border px-4 py-3 text-sm font-semibold tracking-wide transition active:scale-[0.97] ${
                     active
@@ -357,11 +433,11 @@ export default function Home() {
                 >
                   {preset.label}
                   <span
-                    className={`mt-0.5 block font-mono text-xs ${
+                    className={`mt-0.5 block font-mono text-xs tabular-nums ${
                       active ? "text-emerald-400/80" : "text-neutral-500"
                     }`}
                   >
-                    {preset.rate} L/min
+                    {displayedRate.toFixed(1)} L/min
                   </span>
                 </button>
               );
