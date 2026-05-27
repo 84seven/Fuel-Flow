@@ -7,6 +7,11 @@ const MAX_RATE = 100;
 const WARNING_SECONDS = 5;
 const RATE_STORAGE_KEY = "fuelflow:rate";
 
+const FUEL_PRESETS = [
+  { label: "AVGAS", rate: 45 },
+  { label: "Jet A1", rate: 36 },
+] as const;
+
 function clampRate(value: number): number {
   if (Number.isNaN(value)) return 0;
   if (value < MIN_RATE) return MIN_RATE;
@@ -16,7 +21,6 @@ function clampRate(value: number): number {
 
 export default function Home() {
   const [flowRate, setFlowRate] = useState<number>(12.5);
-  const [rateInput, setRateInput] = useState<string>("12.5");
   const [isActive, setIsActive] = useState<boolean>(false);
   const [totalDispensed, setTotalDispensed] = useState<number>(0);
   const [targetInput, setTargetInput] = useState<string>("");
@@ -36,9 +40,7 @@ export default function Home() {
       if (saved !== null) {
         const parsed = Number.parseFloat(saved);
         if (!Number.isNaN(parsed)) {
-          const clamped = clampRate(parsed);
-          setFlowRate(clamped);
-          setRateInput(clamped.toString());
+          setFlowRate(clampRate(parsed));
         }
       }
     } catch {
@@ -149,26 +151,8 @@ export default function Home() {
     };
   }, [isActive]);
 
-  const handleRateChange = (raw: string) => {
-    setRateInput(raw);
-    if (raw === "" || raw === "-") {
-      setFlowRate(0);
-      return;
-    }
-    const parsed = Number.parseFloat(raw);
-    setFlowRate(clampRate(parsed));
-  };
-
-  const handleRateBlur = () => {
-    const clamped = clampRate(Number.parseFloat(rateInput));
-    setFlowRate(clamped);
-    setRateInput(clamped.toString());
-  };
-
   const handleSliderChange = (raw: string) => {
-    const value = clampRate(Number.parseFloat(raw));
-    setFlowRate(value);
-    setRateInput(value.toString());
+    setFlowRate(clampRate(Number.parseFloat(raw)));
   };
 
   const handleTargetChange = (raw: string) => {
@@ -324,60 +308,8 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="space-y-3">
-            <label
-              htmlFor="rate-input"
-              className="flex items-center justify-between text-sm text-neutral-300"
-            >
-              <span>Flow rate</span>
-              <span className="text-xs text-neutral-500">
-                {MIN_RATE} – {MAX_RATE} L/min
-              </span>
-            </label>
-
-            <div className="flex items-stretch gap-3">
-              <input
-                id="rate-input"
-                type="number"
-                inputMode="decimal"
-                min={MIN_RATE}
-                max={MAX_RATE}
-                step="0.1"
-                value={rateInput}
-                onChange={(e) => handleRateChange(e.target.value)}
-                onBlur={handleRateBlur}
-                className="flex-1 min-w-0 rounded-lg bg-neutral-950 border border-neutral-800 px-4 py-3 text-lg font-mono text-neutral-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition"
-                aria-label="Flow rate in litres per minute"
-              />
-              <span className="self-center text-neutral-500 text-sm">L/min</span>
-            </div>
-
-            <input
-              type="range"
-              min={MIN_RATE}
-              max={MAX_RATE}
-              step="0.1"
-              value={flowRate}
-              onChange={(e) => handleSliderChange(e.target.value)}
-              className="w-full accent-emerald-500"
-              aria-label="Flow rate slider"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={isActive ? () => setIsActive(false) : handleStart}
-            className={`w-full rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg transition active:scale-[0.98] hover:opacity-90 ${
-              isActive ? "shadow-red-900/30" : "shadow-emerald-900/30"
-            }`}
-            style={{ backgroundColor: isActive ? "#EF4444" : "#10B981" }}
-            aria-pressed={isActive}
-          >
-            {isActive ? "Stop Flow" : "Start Flow"}
-          </button>
-
-          <div className="rounded-xl bg-neutral-950 border border-neutral-800 px-6 py-8 text-center">
-            <div className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">
+          <div className="rounded-xl bg-neutral-950 border border-neutral-800 px-6 py-8">
+            <div className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3 text-center">
               Current Flow Rate
             </div>
             <div className="flex items-baseline justify-center gap-3 font-mono">
@@ -392,7 +324,61 @@ export default function Home() {
                 L/min
               </span>
             </div>
+            <input
+              type="range"
+              min={MIN_RATE}
+              max={MAX_RATE}
+              step="0.1"
+              value={flowRate}
+              onChange={(e) => handleSliderChange(e.target.value)}
+              className="mt-6 w-full accent-emerald-500"
+              aria-label="Flow rate slider"
+            />
+            <div className="mt-2 flex justify-between text-xs text-neutral-500 tabular-nums">
+              <span>{MIN_RATE}</span>
+              <span>{MAX_RATE} L/min</span>
+            </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {FUEL_PRESETS.map((preset) => {
+              const active = flowRate === preset.rate;
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setFlowRate(clampRate(preset.rate))}
+                  aria-pressed={active}
+                  className={`rounded-xl border px-4 py-3 text-sm font-semibold tracking-wide transition active:scale-[0.97] ${
+                    active
+                      ? "border-emerald-500/70 bg-emerald-500/10 text-emerald-300"
+                      : "border-neutral-800 bg-neutral-900 text-neutral-200 hover:bg-neutral-800"
+                  }`}
+                >
+                  {preset.label}
+                  <span
+                    className={`mt-0.5 block font-mono text-xs ${
+                      active ? "text-emerald-400/80" : "text-neutral-500"
+                    }`}
+                  >
+                    {preset.rate} L/min
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={isActive ? () => setIsActive(false) : handleStart}
+            className={`w-full rounded-xl px-4 py-4 text-base font-semibold text-white shadow-lg transition active:scale-[0.98] hover:opacity-90 ${
+              isActive ? "shadow-red-900/30" : "shadow-emerald-900/30"
+            }`}
+            style={{ backgroundColor: isActive ? "#EF4444" : "#10B981" }}
+            aria-pressed={isActive}
+          >
+            {isActive ? "Stop Flow" : "Start Flow"}
+          </button>
         </section>
 
         <footer className="mt-6 text-center text-xs text-neutral-600">
