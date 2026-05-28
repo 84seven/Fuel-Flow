@@ -35,6 +35,7 @@ function clampRate(value: number): number {
 
 export default function Home() {
   const [flowRate, setFlowRate] = useState<number>(12.5);
+  const [rateInput, setRateInput] = useState<string>("12.5");
   const [isActive, setIsActive] = useState<boolean>(false);
   const [totalDispensed, setTotalDispensed] = useState<number>(0);
   const [targetInput, setTargetInput] = useState<string>("");
@@ -57,7 +58,9 @@ export default function Home() {
       if (savedRate !== null) {
         const parsed = Number.parseFloat(savedRate);
         if (!Number.isNaN(parsed)) {
-          setFlowRate(clampRate(parsed));
+          const clamped = clampRate(parsed);
+          setFlowRate(clamped);
+          setRateInput(clamped.toFixed(1));
         }
       }
 
@@ -220,14 +223,44 @@ export default function Home() {
   const handleSliderChange = (raw: string) => {
     const value = clampRate(Number.parseFloat(raw));
     setFlowRate(value);
+    setRateInput(value.toFixed(1));
     if (activePreset !== null) {
       setPresetRates((prev) => ({ ...prev, [activePreset]: value }));
     }
   };
 
+  const handleRateChange = (raw: string) => {
+    setRateInput(raw);
+    if (raw === "" || raw === "-" || raw === ".") {
+      setFlowRate(0);
+      if (activePreset !== null) {
+        setPresetRates((prev) => ({ ...prev, [activePreset]: 0 }));
+      }
+      return;
+    }
+    const parsed = Number.parseFloat(raw);
+    if (Number.isNaN(parsed)) return;
+    const clamped = clampRate(parsed);
+    setFlowRate(clamped);
+    if (activePreset !== null) {
+      setPresetRates((prev) => ({ ...prev, [activePreset]: clamped }));
+    }
+  };
+
+  const handleRateBlur = () => {
+    const clamped = clampRate(Number.parseFloat(rateInput));
+    setFlowRate(clamped);
+    setRateInput(clamped.toFixed(1));
+    if (activePreset !== null) {
+      setPresetRates((prev) => ({ ...prev, [activePreset]: clamped }));
+    }
+  };
+
   const handlePresetSelect = (label: PresetLabel) => {
     setActivePreset(label);
-    setFlowRate(presetRates[label]);
+    const value = presetRates[label];
+    setFlowRate(value);
+    setRateInput(value.toFixed(1));
   };
 
   const handleTargetChange = (raw: string) => {
@@ -258,7 +291,6 @@ export default function Home() {
     alarmFiredRef.current = false;
   };
 
-  const displayRate = flowRate.toFixed(1);
   const displayTotal = totalDispensed.toFixed(1);
 
   const remainingToTarget =
@@ -388,13 +420,20 @@ export default function Home() {
               Current Flow Rate
             </div>
             <div className="flex items-baseline justify-center gap-3 font-mono">
-              <span
-                className={`text-5xl sm:text-6xl font-bold tabular-nums transition-colors ${
+              <input
+                type="number"
+                inputMode="decimal"
+                min={MIN_RATE}
+                max={MAX_RATE}
+                step="0.1"
+                value={rateInput}
+                onChange={(e) => handleRateChange(e.target.value)}
+                onBlur={handleRateBlur}
+                className={`w-[5ch] bg-transparent border-0 outline-none text-center text-5xl sm:text-6xl font-bold font-mono tabular-nums rounded-md px-1 focus:bg-neutral-900 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
                   isActive ? "text-emerald-400" : "text-neutral-200"
                 }`}
-              >
-                {displayRate}
-              </span>
+                aria-label="Flow rate in litres per minute"
+              />
               <span className="text-lg sm:text-xl text-neutral-400">
                 L/min
               </span>
